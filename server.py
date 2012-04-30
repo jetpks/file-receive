@@ -60,7 +60,7 @@ if __name__ == "__main__":
     if not os.path.exists(targetDir):
         os.makedirs(targetDir)
 
-    HOST, PORT = "localhost", 9999
+    HOST, PORT = "0.0.0.0", 9999
 
     # Create the server, binding to localhost on port 9999
     server = SocketServer.TCPServer((HOST, PORT), TCPUploadReceive)
