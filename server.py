@@ -35,9 +35,9 @@ class TCPUploadReceive(SocketServer.StreamRequestHandler):
 
         self.wfile.write('{ "success": "true" }')
 
-def unTarFile(tarball, target):
+def unTarFile(tarPath, target):
     log("Extracting...")
-    with tarfile.open(path, 'r|*') as tarball:
+    with tarfile.open(tarPath, 'r|*') as tarball:
         tarball.extractall(target)
 
 def rmFile(path):
