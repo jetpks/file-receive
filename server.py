@@ -5,7 +5,6 @@ import SocketServer
 import tarfile
 import uuid
 import time
-# test
 
 # Some globals:
 tmpDir = './tmp/' # MUST END IN /
