@@ -5,6 +5,7 @@ import SocketServer
 import tarfile
 import uuid
 import time
+import re
 
 # Some globals:
 tmpDir = './tmp/' # MUST END IN /
@@ -16,18 +17,28 @@ class TCPUploadReceive(SocketServer.StreamRequestHandler):
     def handle(self):
         tempFile = tmpDir + tmpFilePrefix + uuid.uuid4().hex
         done = False
+        http = False
+        httpLength = None
         f = open(tempFile, 'w')
         bufferSize = 4096
+        index = 0
 
         log(tempFile + " opened for writing.")
         log("Receiving file from {}...".format(self.client_address[0]))
 
         while not done:
             bufferData = self.request.recv(bufferSize).strip()
+
+            if index == 0 and re.search('^POST.*HTTP.*', bufferData):
+                http = True
+                
+
             if bufferData != "":
                 f.write(bufferData)
             else:
                 done = True
+
+            index += 1
         f.close()
 
         unTarFile(tempFile, targetDir)
