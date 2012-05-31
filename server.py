@@ -8,34 +8,49 @@ import time
 import re
 
 # Some globals:
-tmpDir = './tmp/' # MUST END IN /
-tmpFilePrefix = 'recvr-'
-targetDir = '/tmp/mnt/sda1/tiles/' # ALSO MUST END IN /
+tmpDir          = './tmp/' # MUST END IN /
+tmpFilePrefix   = 'recvr-'
+targetDir       = '/tmp/mnt/sda1/tiles/' # ALSO MUST END IN /
 
 class TCPUploadReceive(SocketServer.StreamRequestHandler):
 
     def handle(self):
-        tempFile = tmpDir + tmpFilePrefix + uuid.uuid4().hex
-        done = False
-        http = False
-        httpLength = None
-        f = open(tempFile, 'w')
-        bufferSize = 4096
-        index = 0
+        tempFile    = tmpDir + tmpFilePrefix + uuid.uuid4().hex
+        done        = False
+        f           = open(tempFile, 'w')
+        http        = False
+        bufferSize  = 4096
+        index       = 0
 
         log(tempFile + " opened for writing.")
         log("Receiving file from {}...".format(self.client_address[0]))
 
-        while not done:
-            bufferData = self.request.recv(bufferSize).strip()
+        def finishHttp(good):
+            if good:
+                self.wfile.write('HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n')
+                self.request.close()
+            else:
+                self.wfile.write('{ "success": false, "message": "Bad mime type." }')
+                f.close()
+                log("Bad mime type detected on HTTP POST. Killing transfer.")
 
-            if index == 0 and re.search('^POST.*HTTP.*', bufferData):
+        while not done:
+            log('Opened while loop...')
+            bufferData = self.request.recv(bufferSize).strip()
+            log('Read in some data')
+
+            if index == 0 and checkHttp(bufferData):
                 http = True
-                
+                bufferData = stripHeaders(bufferData)
 
             if bufferData != "":
+                log('writing...' + bufferData)
                 f.write(bufferData)
+                #if http and len(bufferData) < bufferSize:
+                #    finishHttp(True)
+                #    break
             else:
+                log('We have hit the done.')
                 done = True
 
             index += 1
@@ -44,8 +59,10 @@ class TCPUploadReceive(SocketServer.StreamRequestHandler):
         unTarFile(tempFile, targetDir)
         rmFile(tempFile)
 
-        self.wfile.write('{ "success": "true" }')
+        self.wfile.write('{ "success": true }')
         log("Finished!\n")
+
+            
 
 def unTarFile(tarPath, target):
     log("Extracting...")
@@ -58,12 +75,22 @@ def rmFile(path):
 
 def log(message):
     logTime = '%H:%M:%S%%%y-%m-%d - '
-
     sys.stdout.write(time.strftime(logTime))
     sys.stdout.write(message)
     sys.stdout.write('\n')
     sys.stdout.flush()
-    
+
+def stripHeaders(blob):
+    return blob[re.search('\r\n\r\n', blob).end():]
+
+def checkHttp(bufferData):
+    headMatch = '^POST.*HTTP.*'
+    contMatch = "Content-type: application\/(x-gzip|x-tar|x-bz2|x-bzip|x-bzip2)"
+
+    if re.search(headMatch, bufferData, re.I) and re.search(contMatch, bufferData, re.I | re.M):
+        return True
+
+    return False
 
 if __name__ == "__main__":
     # Some environment fixing, before we begin:
