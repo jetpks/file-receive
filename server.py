@@ -35,20 +35,21 @@ class TCPUploadReceive(SocketServer.StreamRequestHandler):
                 log("Bad mime type detected on HTTP POST. Killing transfer.")
 
         while not done:
-            log('Opened while loop...')
+            if index > 0 and http:
+                self.wfile.write('HTTP/1.1 100 Continue\r\n\r\n')
+
             bufferData = self.request.recv(bufferSize).strip()
-            log('Read in some data')
 
             if index == 0 and checkHttp(bufferData):
                 http = True
-                bufferData = stripHeaders(bufferData)
+                index += 1
+                continue
 
             if bufferData != "":
-                log('writing...' + bufferData)
                 f.write(bufferData)
-                #if http and len(bufferData) < bufferSize:
-                #    finishHttp(True)
-                #    break
+                if http and len(bufferData) < bufferSize:
+                    finishHttp(True)
+                    break
             else:
                 log('We have hit the done.')
                 done = True
@@ -80,8 +81,6 @@ def log(message):
     sys.stdout.write('\n')
     sys.stdout.flush()
 
-def stripHeaders(blob):
-    return blob[re.search('\r\n\r\n', blob).end():]
 
 def checkHttp(bufferData):
     headMatch = '^POST.*HTTP.*'
