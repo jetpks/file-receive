@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+
+# Import 'with' statement for Python 2.5 and earlier. 'with' and 'as' are
+# keywords in Python 2.6.
+from __future__ import with_statement
+from contextlib import closing
+
 import os
 import sys
 import SocketServer
@@ -8,9 +14,9 @@ import time
 import re
 
 # Some globals:
-tmpDir          = './tmp/' # MUST END IN /
+tmpDir          = '/opt/tmp/'  # MUST END IN /
 tmpFilePrefix   = 'recvr-'
-targetDir       = '/tmp/mnt/sda1/tiles/' # ALSO MUST END IN /
+targetDir       = '/opt/tiles/'  # ALSO MUST END IN /
 
 class TCPUploadReceive(SocketServer.StreamRequestHandler):
 
@@ -23,7 +29,13 @@ class TCPUploadReceive(SocketServer.StreamRequestHandler):
         index       = 0
 
         log(tempFile + " opened for writing.")
-        log("Receiving file from {}...".format(self.client_address[0]))
+
+        # str.format was not included until Python 2.6. The % operator in
+        # earlier versions has a similar function to str.format.
+        if sys.version_info < (2, 6):
+            log('Receiving file from %s...' % (self.client_address[0]))
+        else:
+            log("Receiving file from {}...".format(self.client_address[0]))
 
         def finishHttp(good):
             if good:
@@ -67,7 +79,7 @@ class TCPUploadReceive(SocketServer.StreamRequestHandler):
 
 def unTarFile(tarPath, target):
     log("Extracting...")
-    with tarfile.open(tarPath, 'r|*') as tarball:
+    with closing(tarfile.open(tarPath, 'r|*')) as tarball:
         tarball.extractall(target)
 
 def rmFile(path):
